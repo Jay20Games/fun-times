@@ -9,7 +9,7 @@ services:
     environment:
       DB_MYSQL_HOST: "nginxproxymanager-db"
       DB_MYSQL_PORT: 3306
-      DB_MYSQL_USER: "nprox"
+      DB_MYSQL_USER: "rprox"
       DB_MYSQL_PASSWORD: "{strong-password}"
       DB_MYSQL_NAME: "npm"
     volumes:

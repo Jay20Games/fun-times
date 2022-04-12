@@ -1,0 +1,230 @@
+version: '3.9'
+networks:
+  docker_internal_network:
+    name: ${DOCKER_NETWORK_NAME}
+services:
+  plex: ######### [http://localhost:32400/web/index.html]  PLEX - media server
+    image: plexinc/pms-docker:plexpass
+    container_name: ${DOCKER_CONTAINER_PREFIX}_plex
+    networks:
+      - docker_internal_network
+    environment:
+      - PLEX_CLAIM=${PLEX_CLAIM}
+      - ADVERTISE_IP=${PLEX_ADVERTISE_IP}
+      - PUID=1000
+      - PGID=1000
+      - TZ=${DOCKER_TIME_ZONE}
+    volumes:
+      - ${PLEX_TRANSCODE_PATH}:/transcode
+      - ${DOCKER_APPDATA_PATH}\plex:/config
+      - ${DATA_PATH}:/data
+    ports:
+      - '32400:32400'
+      - '3005:3005'
+      - '8324:8324'
+      - '32469:32469'
+      - '1900:1900/udp'
+      - '32410:32410/udp'
+      - '32412:32412/udp'
+      - '32413:32413/udp'
+      - '32414:32414/udp'
+    restart: unless-stopped
+  ombi: ######### [http://localhost:3579]  OMBI - user media requests and trouble tickets
+    image: linuxserver/ombi:development
+    container_name: ${DOCKER_CONTAINER_PREFIX}_ombi
+    networks:
+      - docker_internal_network
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${DOCKER_TIME_ZONE}
+    volumes:
+      - ${DOCKER_APPDATA_PATH}\ombi:/config
+    ports:
+      - '3579:3579'
+    restart: unless-stopped
+  radarr: ####### [http://localhost:7878]  Radarr - movie management
+    image: linuxserver/radarr
+    container_name: ${DOCKER_CONTAINER_PREFIX}_radarr
+    networks:
+      - docker_internal_network
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${DOCKER_TIME_ZONE}
+    volumes:
+      - ${DOCKER_APPDATA_PATH}\radarr:/config
+      - ${DATA_PATH}:/data
+    ports:
+      - '7878:7878'
+    restart: unless-stopped
+  sonarr: ####### [http://localhost:8989]  Sonarr - TV management
+    image: linuxserver/sonarr
+    container_name: ${DOCKER_CONTAINER_PREFIX}_sonarr
+    networks:
+      - docker_internal_network
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${DOCKER_TIME_ZONE}
+    volumes:
+      - ${DOCKER_APPDATA_PATH}\sonarr:/config
+      - ${DATA_PATH}:/data
+    ports:
+      - '8989:8989'
+    restart: unless-stopped    
+  lidarr: ####### [http://localhost:8686]  Lidarr - music management
+    image: linuxserver/lidarr
+    container_name: ${DOCKER_CONTAINER_PREFIX}_lidarr
+    networks:
+      - docker_internal_network
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${DOCKER_TIME_ZONE}
+    volumes:
+      - ${DOCKER_APPDATA_PATH}\lidarr:/config
+      - ${DATA_PATH}:/data
+    ports:
+      - '8686:8686'
+    restart: unless-stopped
+  bazarr: ####### [http://localhost:6767]  Bazarr - subtitle managment
+    image: ghcr.io/linuxserver/bazarr
+    container_name: ${DOCKER_CONTAINER_PREFIX}_bazarr
+    networks:
+      - docker_internal_network
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${DOCKER_TIME_ZONE}
+    volumes:
+      - ${DOCKER_APPDATA_PATH}\bazarr:/config
+      - ${DATA_PATH}:/data
+    ports:
+      - '6767:6767'
+    restart: unless-stopped
+  tautulli: ##### [http://localhost:8181]  Tautulli - stats
+    image: linuxserver/tautulli
+    container_name: ${DOCKER_CONTAINER_PREFIX}_tautulli
+    networks:
+      - docker_internal_network
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${DOCKER_TIME_ZONE}
+    volumes:
+      - ${DOCKER_APPDATA_PATH}\tautulli:/config
+      - ${DOCKER_APPDATA_PATH}\plex\Library\Application Support\Plex Media Server\Logs:/logs
+    ports:
+      - '8181:8181'
+    restart: unless-stopped
+  nzbhydra2: #### [http://localhost:5076]  NZBHydra2 - meta search for newznab indexers and torznab trackers
+    image: linuxserver/nzbhydra2
+    container_name: ${DOCKER_CONTAINER_PREFIX}_nzbhydra2
+    networks:
+      - docker_internal_network
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${DOCKER_TIME_ZONE}
+    volumes:
+      - ${DOCKER_APPDATA_PATH}\nzbhydra2:/config
+      - ${DATA_PATH}:/data
+    ports:
+      - '5076:5076'
+    restart: unless-stopped
+  jackett: ###### [http://localhost:9117]  Jackett - indexer scraping & translation logic
+    image: ghcr.io/linuxserver/jackett
+    container_name: ${DOCKER_CONTAINER_PREFIX}_jackett
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${DOCKER_TIME_ZONE}
+    volumes:
+      - ${DOCKER_APPDATA_PATH}\jackett:/config
+      - ${DATA_PATH}:/data
+    ports:
+      - '9117:9117'
+    restart: unless-stopped
+  deluge-vpn: ### [http://localhost:8112]  Delude VPN + Privoxy - torrent downloader, wrapped in a VPN, also running Privoxy [8118]
+    image: binhex/arch-delugevpn  
+    container_name: ${DOCKER_CONTAINER_PREFIX}_deluge-vpn
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - VPN_ENABLED=yes
+      - VPN_USER=${VPN_USERNAME}
+      - VPN_PASS=${VPN_PASSWORD}
+      - VPN_PROV=pia
+      - VPN_CLIENT=openvpn # connection files located at https://www.privateinternetaccess.com/openvpn/openvpn.zip
+      - STRICT_PORT_FORWARD=yes
+      - ENABLE_PRIVOXY=no
+      - LAN_NETWORK=${VPN_LAN_SUBNET}
+      - NAME_SERVERS=209.222.18.222,84.200.69.80,37.235.1.174,1.1.1.1,209.222.18.218,37.235.1.177,84.200.70.40,1.0.0.1
+      - DELUGE_DAEMON_LOG_LEVEL=error
+      - DELUGE_WEB_LOG_LEVEL=error
+      #- VPN_INPUT_PORTS=1234
+      #- VPN_OUTPUT_PORTS=5678
+      - DEBUG=false
+      - PUID=1000
+      - PGID=1000
+      - TZ=${DOCKER_TIME_ZONE}
+    volumes:
+      - '/etc/localtime:/etc/localtime:ro'
+      - ${DOCKER_APPDATA_PATH}\deluge-vpn:/config
+      - ${DATA_PATH}:/data
+    ports:
+      - '8112:8112'
+      - '8118:8118'
+      - '58846:58846'
+      - '58946:58946'
+    restart: unless-stopped
+  sabnzbd-vpn: ## [http://localhost:8080]  SABnzbd VPN - usenet downloader, wrapped in a VPN
+    image: binhex/arch-sabnzbdvpn
+    container_name: ${DOCKER_CONTAINER_PREFIX}_sabnzbd-vpn
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - VPN_ENABLED=yes
+      - VPN_USER=${VPN_USERNAME}
+      - VPN_PASS=${VPN_PASSWORD}
+      - VPN_PROV=pia
+      - VPN_CLIENT=openvpn # connection files located at https://www.privateinternetaccess.com/openvpn/openvpn.zip
+      - STRICT_PORT_FORWARD=no
+      - ENABLE_PRIVOXY=no
+      - LAN_NETWORK=${VPN_LAN_SUBNET}
+      - NAME_SERVERS=209.222.18.222,84.200.69.80,37.235.1.174,1.1.1.1,209.222.18.218,37.235.1.177,84.200.70.40,1.0.0.1
+      #- VPN_INPUT_PORTS=1234
+      #- VPN_OUTPUT_PORTS=5678
+      - DEBUG=false
+      - PUID=1000
+      - PGID=1000
+      - TZ=${DOCKER_TIME_ZONE}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${DOCKER_APPDATA_PATH}\sabnzbd-vpn:/config
+      - ${DATA_PATH}:/data
+    ports:
+      - '8080:8080'
+      - '8090:8090'
+      #- '8118:8118' # disabled because privoxy is running in the torrent container
+    restart: unless-stopped
+  gaps: ######### [http://localhost:8484]  GAPS - identifies movie collections and missing films
+    container_name: ${DOCKER_CONTAINER_PREFIX}_gaps
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${DOCKER_TIME_ZONE}
+    volumes:
+      - ${DOCKER_APPDATA_PATH}\gaps:/config
+    ports:
+      - '8484:8484'
+    restart: unless-stopped
+  dozzle: ####### [http://localhost:9999]  Dozzle - Docker log reader
+    image: amir20/dozzle:latest  
+    container_name: ${DOCKER_CONTAINER_PREFIX}_dozzle
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - '9999:8080'
+    restart: unless-stopped

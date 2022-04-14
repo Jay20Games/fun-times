@@ -1,1 +1,4 @@
-#Standard install with guided choices
+#Standard install with:
+
+*Blog: Ghost
+

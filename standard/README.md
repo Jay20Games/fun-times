@@ -1,4 +1,4 @@
-#Standard install with:
+# Standard install with:
 
-*Blog: Ghost
+* Blog: Ghost
 
